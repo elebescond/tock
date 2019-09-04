@@ -27,7 +27,7 @@ import {
   UpdateSentencesQuery
 } from "../model/nlp";
 import {StateService} from "../core-nlp/state.service";
-import {ActivatedRoute} from "@angular/router";
+import {ActivatedRoute, Router} from "@angular/router";
 import {NlpService} from "../nlp-tabs/nlp.service";
 import {MatSnackBar} from "@angular/material";
 import {UserRole} from "../model/auth";
@@ -67,9 +67,12 @@ export class SearchComponent implements OnInit {
       if (params["status"]) {
         this.status = SentenceStatus[SentenceStatus[params["status"]]];
       }
+
+      this.filter = SentenceFilter.of(this.route.snapshot.params);
+      this.status = SentenceStatus[this.filter.status[0]];
       this.state.currentIntents.subscribe(i => {
         const search = this.filter.search;
-        this.filter = new SentenceFilter();
+        //this.filter = new SentenceFilter();
         this.filter.search = search;
         this.selectedSentences = null;
         this.update = new SentencesUpdate();
@@ -150,6 +153,7 @@ export class SearchComponent implements OnInit {
         this.filter.search = this.filter.search.trim()
       }
       this.scroll.refresh();
+
     }, 1);
   }
 

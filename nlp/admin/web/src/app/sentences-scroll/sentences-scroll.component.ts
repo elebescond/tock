@@ -26,6 +26,7 @@ import {MatPaginator, MatSnackBar} from "@angular/material";
 import {UserRole} from "../model/auth";
 import {DataSource, SelectionModel} from "@angular/cdk/collections";
 import {Sort} from "@angular/material/sort/typings/sort";
+import {ActivatedRoute, Params, Router} from "@angular/router";
 
 @Component({
   selector: 'tock-sentences-scroll',
@@ -57,7 +58,9 @@ export class SentencesScrollComponent extends ScrollComponent<Sentence> implemen
 
   constructor(state: StateService,
               private nlp: NlpService,
-              private snackBar: MatSnackBar) {
+              private snackBar: MatSnackBar,
+              private route: ActivatedRoute,
+              private router: Router) {
     super(state);
   }
 
@@ -85,10 +88,27 @@ export class SentencesScrollComponent extends ScrollComponent<Sentence> implemen
     }
   }
 
+  public toParams(): Params {
+    let params = {
+      search: this.filter.search?this.filter.search:null,
+      intentId: this.filter.intentId?this.filter.intentId:null,
+      status: this.filter.status?this.filter.status:null,
+      entityType: this.filter.entityType?this.filter.entityType:null,
+      entityRole: this.filter.entityRole?this.filter.entityRole:null,
+      modifiedAfter: (this.filter.modifiedAfter)?this.filter.modifiedAfter.toISOString():null,
+      onlyToReview: this.filter.onlyToReview?this.filter.onlyToReview:null,
+      pageSize: this.pageSize,
+      pageIndex: this.pageIndex
+    };
+    Object.keys(params).filter(key => params[key] == null ).forEach(key => delete params[key]);
+    return params;
+  }
+
   ngOnInit(): void {
     this.initColumns();
     this.dataSource = new SentencesDataSource();
-
+    this.pageIndex = parseInt(this.route.snapshot.params.pageIndex);
+    this.pageSize = parseInt(this.route.snapshot.params.pageSize);
     super.ngOnInit();
   }
 
@@ -107,7 +127,8 @@ export class SentencesScrollComponent extends ScrollComponent<Sentence> implemen
 
   resetCursor() {
     super.resetCursor();
-    this.pageIndex = 0;
+    //this.pageIndex = 0;
+    this.cursor = this.pageIndex * this.pageSize;
     this.selection.clear();
     this.fireSelectionChange();
   }
@@ -135,6 +156,7 @@ export class SentencesScrollComponent extends ScrollComponent<Sentence> implemen
   }
 
   search(query: PaginatedQuery): Observable<PaginatedResult<Sentence>> {
+    this.router.navigate(['/nlp/search', this.toParams()]);
     return this.nlp.searchSentences(this.toSearchQuery(query));
   }
 
@@ -231,6 +253,19 @@ export class SentenceFilter {
               public modifiedAfter?: Date,
               public onlyToReview: boolean = false,
               public searchSubEntities: boolean = false) {
+  }
+
+  static of(params: Params): SentenceFilter {
+    const { search, intentId, status, entityType, entityRole, modifiedAfter, onlyToReview } = params;
+    return new SentenceFilter(
+      search,
+      intentId,
+      [SentenceStatus[SentenceStatus[parseInt(status)]]],
+      entityType,
+      entityRole,
+      modifiedAfter && modifiedAfter != ""?new Date(modifiedAfter):null,
+      onlyToReview
+    );
   }
 
   clone(): SentenceFilter {
